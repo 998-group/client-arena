@@ -6,6 +6,8 @@ const speed = 5;
 export default function Game({ player }) {
   const [position, setPosition] = useState({ x: 100, y: 100 });
   const [others, setOthers] = useState({});
+  const [hp, setHp] = useState(100);
+
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -16,7 +18,9 @@ export default function Game({ player }) {
       if (e.key === "s") newY += speed;
       if (e.key === "a") newX -= speed;
       if (e.key === "d") newX += speed;
-
+      if (e.code === "Space") {
+        socket.emit("attack", { room: player.room });
+      }
       const newPos = { x: newX, y: newY };
       setPosition(newPos);
       socket.emit("move", { room: player.room, position: newPos });
@@ -44,6 +48,37 @@ export default function Game({ player }) {
       socket.off("player_left");
     };
   }, []);
+  useEffect(() => {
+    socket.on("player_attacked", ({ id }) => {
+      // Masalan, boshqa o‘yinchining yaqinida bo‘lsa, zarba beramiz:
+      const target = others[id];
+      if (target && isNearby(position, target)) {
+        socket.emit("damage", { targetId: id, amount: 20 });
+      }
+    });
+
+    socket.on("player_damaged", ({ id, hp }) => {
+      setOthers((prev) => ({
+        ...prev,
+        [id]: { ...prev[id], hp },
+      }));
+    });
+
+    socket.on("player_dead", (id) => {
+      setOthers((prev) => {
+        const copy = { ...prev };
+        delete copy[id];
+        return copy;
+      });
+    });
+  }, [position, others]);
+
+  function isNearby(pos1, pos2) {
+    const dx = pos1.x - pos2.x;
+    const dy = pos1.y - pos2.y;
+    return Math.sqrt(dx * dx + dy * dy) < 50;
+  }
+
 
   return (
     <div className="w-screen h-screen bg-base-200 relative overflow-hidden">
@@ -54,15 +89,19 @@ export default function Game({ player }) {
         🧍
       </div>
 
-      {Object.entries(others).map(([id, pos]) => (
+      {Object.entries(others).map(([id, data]) => (
         <div
           key={id}
           className="absolute w-10 h-10 bg-secondary text-white rounded-full flex items-center justify-center"
-          style={{ left: pos.x, top: pos.y }}
+          style={{ left: data.x, top: data.y }}
         >
           👾
+          <div className="absolute -top-5 text-xs bg-red-500 px-1 rounded">
+            {data.hp || 100} HP
+          </div>
         </div>
       ))}
+
     </div>
   );
 }
