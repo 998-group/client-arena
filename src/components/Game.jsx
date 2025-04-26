@@ -1,107 +1,143 @@
-import { useEffect, useState } from "react";
-import socket from "../socket";
+import React, { useEffect, useState } from "react";
+import socket from "./socket"; // socket.js faylidan socketni import qilish
 
-const speed = 5;
+const Game = ({ player }) => {
+  const [players, setPlayers] = useState({});
+  const [bulletDirection, setBulletDirection] = useState(null);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [gameOver, setGameOver] = useState(false);
+  const [leaderboard, setLeaderboard] = useState([]);
 
-export default function Game({ player }) {
-  const [position, setPosition] = useState({ x: 100, y: 100 });
-  const [others, setOthers] = useState({});
+  // Personage ning pozitsiyasi va harakatini boshqarish
+  const [position, setPosition] = useState({ x: 0, y: 0 });
   const [hp, setHp] = useState(100);
 
   useEffect(() => {
-    const handleKeyDown = (e) => {
-      let newX = position.x;
-      let newY = position.y;
-
-      if (e.key === "w") newY -= speed;
-      if (e.key === "s") newY += speed;
-      if (e.key === "a") newX -= speed;
-      if (e.key === "d") newX += speed;
-      if (e.code === "Space") {
-        console.log("ATTACK:")
-        socket.emit("attack", { room: player.room });
-      }
-      const newPos = { x: newX, y: newY };
-      setPosition(newPos);
-      socket.emit("move", { room: player.room, position: newPos });
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [position, player.room]);
-
-  useEffect(() => {
-    socket.on("player_move", ({ id, position }) => {
-      setOthers(prev => ({ ...prev, [id]: position }));
-    });
-
-    socket.on("player_left", (id) => {
-      setOthers(prev => {
-        const copy = { ...prev };
-        delete copy[id];
-        return copy;
-      });
-    });
-
-    return () => {
-      socket.off("player_move");
-      socket.off("player_left");
-    };
-  }, []);
-
-  useEffect(() => {
-    socket.on("player_attacked", ({ id }) => {
-      // Masalan, boshqa o‘yinchining yaqinida bo‘lsa, zarba beramiz:
-      const target = others[id];
-      if (target && isNearby(position, target)) {
-        socket.emit("damage", { targetId: id, amount: 20 });
-      }
-    });
-
-    socket.on("player_damaged", ({ id, hp }) => {
-      setOthers((prev) => ({
-        ...prev,
-        [id]: { ...prev[id], hp },
-      }));
+    socket.on("player_positions", (positions) => {
+      setPlayers(positions);
     });
 
     socket.on("player_dead", (id) => {
-      setOthers((prev) => {
-        const copy = { ...prev };
-        delete copy[id];
-        return copy;
+      setPlayers((prevPlayers) => {
+        const newPlayers = { ...prevPlayers };
+        delete newPlayers[id];
+        return newPlayers;
       });
+      setGameOver(true);
     });
-  }, [position, others]);
 
-  function isNearby(pos1, pos2) {
-    const dx = pos1.x - pos2.x;
-    const dy = pos1.y - pos2.y;
-    return Math.sqrt(dx * dx + dy * dy) < 50;
-  }
+    socket.on("leaderboard_update", (players) => {
+      setLeaderboard(
+        Object.entries(players).map(([id, { score, name }]) => ({
+          id,
+          name,
+          score,
+        }))
+      );
+    });
+
+    return () => {
+      socket.off("player_positions");
+      socket.off("player_dead");
+      socket.off("leaderboard_update");
+    };
+  }, []);
+
+  // W, A, S, D tugmalarini bosganda harakat qilish
+  const handleKeyDown = (e) => {
+    const step = 5;
+    if (gameOver) return;
+
+    if (e.key === "w") setPosition((prev) => ({ ...prev, y: prev.y - step }));
+    if (e.key === "s") setPosition((prev) => ({ ...prev, y: prev.y + step }));
+    if (e.key === "a") setPosition((prev) => ({ ...prev, x: prev.x - step }));
+    if (e.key === "d") setPosition((prev) => ({ ...prev, x: prev.x + step }));
+  };
+
+  // Mouse xohishlariga qarab o'q otish
+  const handleMouseMove = (e) => {
+    setMousePos({ x: e.clientX, y: e.clientY });
+  };
+
+  // Space tugmasi bosilganda o'qni otish
+  const handleSpaceKey = (e) => {
+    if (e.code === "Space" && player) {
+      const direction = { x: mousePos.x - position.x, y: mousePos.y - position.y };
+      setBulletDirection(direction);
+      socket.emit("fire", { direction, room: player.room });
+    }
+  };
+
+  useEffect(() => {
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("keydown", handleSpaceKey);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("keydown", handleSpaceKey);
+    };
+  }, [mousePos, position, player]);
+
+  // Leaderboardni ko'rsatish
+  const renderLeaderboard = () => {
+    return leaderboard.map(({ id, name, score }) => (
+      <div key={id} className="flex justify-between p-2 border-b">
+        <div>{name}</div>
+        <div>{score}</div>
+      </div>
+    ));
+  };
 
   return (
-    <div className="w-screen h-screen bg-base-200 relative overflow-hidden">
-      <div
-        className="absolute w-10 h-10 bg-primary text-white rounded-full flex items-center justify-center"
-        style={{ left: position.x, top: position.y }}
-      >
-        🧍
-      </div>
+    <div className="bg-gray-900 text-white min-h-screen flex flex-col items-center p-4 relative">
+      {gameOver ? (
+        <div className="card bg-red-800 p-6 rounded-xl shadow-xl text-center">
+          <h2 className="text-3xl font-bold mb-4">Game Over</h2>
+          <button
+            onClick={() => setGameOver(false)}
+            className="btn btn-success w-full"
+          >
+            Play Again
+          </button>
+        </div>
+      ) : (
+        <div className="flex flex-col items-center">
+          <h1 className="text-3xl font-bold mb-4">{player.name}'s Game</h1>
 
-      {Object.entries(others).map(([id, data]) => (
-        <div
-          key={id}
-          className="absolute w-10 h-10 bg-secondary text-white rounded-full flex items-center justify-center"
-          style={{ left: data.x, top: data.y }}
-        >
-          👾
-          <div className="absolute -top-5 text-xs bg-red-500 px-1 rounded">
-            <p>{data.name}</p>
-            <p>{data.hp || 100} HP</p>
+          {/* Players */}
+          <div className="space-y-4 mb-6">
+            {Object.entries(players).map(([id, { name, x, y, hp }]) => (
+              <div key={id} className="card bg-gray-700 p-4 rounded-xl shadow-xl w-80">
+                <div className="flex justify-between">
+                  <span className="font-semibold">{name}</span>
+                  <span>HP: {hp}</span>
+                </div>
+                <div>Position: ({x.toFixed(1)}, {y.toFixed(1)})</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Game Actions */}
+          <div className="flex justify-center">
+            <button
+              onClick={() => socket.emit("disconnect")}
+              className="btn btn-warning mb-4"
+            >
+              Leave Room
+            </button>
           </div>
         </div>
-      ))}
+      )}
+
+      {/* Leaderboard fixed right */}
+      <div className="fixed right-0 top-0 w-64 bg-gray-800 text-white p-4 rounded-l-xl shadow-xl h-full overflow-auto">
+        <h2 className="text-xl font-semibold mb-4">Leaderboard</h2>
+        <div className="space-y-2">{renderLeaderboard()}</div>
+      </div>
     </div>
   );
-}
+};
+
+export default Game;

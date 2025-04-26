@@ -1,16 +1,23 @@
-import { useState } from "react";
-import JoinRoom from "./components/Join";
+import React, { useState } from "react";
+import Join from "./components/Join";
 import Game from "./components/Game";
 
-function App() {
-  const [inGame, setInGame] = useState(false);
-  const [player, setPlayer] = useState({ name: "", room: "" });
+const App = () => {
+  const [player, setPlayer] = useState(null);
 
-  return inGame ? (
-    <Game player={player} />
-  ) : (
-    <JoinRoom setInGame={setInGame} setPlayer={setPlayer} />
+  const handleJoin = (name, room) => {
+    setPlayer({ name, room });
+  };
+
+  return (
+    <div className="App">
+      {!player ? (
+        <Join onJoin={handleJoin} />
+      ) : (
+        <Game player={player} />
+      )}
+    </div>
   );
-}
+};
 
 export default App;

@@ -1,28 +1,48 @@
-import { useState } from "react";
-import socket from "../socket";
+// Join.js
+import React, { useState } from "react";
 
-export default function JoinRoom({ setInGame, setPlayer }) {
-    const [name, setName] = useState("");
-    const [room, setRoom] = useState("");
+const Join = ({ onJoin }) => {
+  const [name, setName] = useState("");
+  const [room, setRoom] = useState("");
 
-    const handleJoin = () => {
-        if (name && room) {
-            socket.emit("join_room", { name, room });
-            setPlayer({ name, room });
-            setInGame(true);
-        }
-    };
+  const handleJoin = () => {
+    if (name && room) {
+      onJoin(name, room);
+    } else {
+      alert("Please enter a name and room.");
+    }
+  };
 
-    return (
-        <div className="flex justify-center items-center h-screen">
-            <div className="shadow-xl shadow-primary rounded-xl">
-                <div className="p-4 flex flex-col gap-1 w-96 border shadow-inner shadow-primary rounded-xl">
-                    <h1 className="text-xl mb-4 font-mono text-pretty text-primary text-center tracking-widest font-black">⚔️Battle Arena⚔️</h1>
-                    <input className="input input-primary w-full" placeholder="Ismingiz" value={name} onChange={e => setName(e.target.value)} />
-                    <input className="input input-primary w-full" placeholder="Xona ID" value={room} onChange={e => setRoom(e.target.value)} />
-                    <button onClick={handleJoin} className="btn btn-primary">Kirish</button>
-                </div>
-            </div>
+  return (
+    <div className="flex justify-center items-center min-h-screen bg-gray-900">
+      <div className="card bg-gray-800 p-8 rounded-xl shadow-xl w-96">
+        <h2 className="text-2xl font-bold mb-4 text-white">Join the Game</h2>
+        <div className="mb-4">
+          <label className="block text-white mb-2">Your Name</label>
+          <input
+            type="text"
+            className="input input-bordered w-full"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Enter your name"
+          />
         </div>
-    );
-}
+        <div className="mb-4">
+          <label className="block text-white mb-2">Room</label>
+          <input
+            type="text"
+            className="input input-bordered w-full"
+            value={room}
+            onChange={(e) => setRoom(e.target.value)}
+            placeholder="Enter room name"
+          />
+        </div>
+        <button onClick={handleJoin} className="btn btn-primary w-full">
+          Join Game
+        </button>
+      </div>
+    </div>
+  );
+};
+
+export default Join;
