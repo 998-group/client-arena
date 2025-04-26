@@ -8,7 +8,6 @@ export default function Game({ player }) {
   const [others, setOthers] = useState({});
   const [hp, setHp] = useState(100);
 
-
   useEffect(() => {
     const handleKeyDown = (e) => {
       let newX = position.x;
@@ -19,6 +18,7 @@ export default function Game({ player }) {
       if (e.key === "a") newX -= speed;
       if (e.key === "d") newX += speed;
       if (e.code === "Space") {
+        console.log("ATTACK:")
         socket.emit("attack", { room: player.room });
       }
       const newPos = { x: newX, y: newY };
@@ -48,6 +48,7 @@ export default function Game({ player }) {
       socket.off("player_left");
     };
   }, []);
+
   useEffect(() => {
     socket.on("player_attacked", ({ id }) => {
       // Masalan, boshqa o‘yinchining yaqinida bo‘lsa, zarba beramiz:
@@ -79,7 +80,6 @@ export default function Game({ player }) {
     return Math.sqrt(dx * dx + dy * dy) < 50;
   }
 
-
   return (
     <div className="w-screen h-screen bg-base-200 relative overflow-hidden">
       <div
@@ -102,7 +102,6 @@ export default function Game({ player }) {
           </div>
         </div>
       ))}
-
     </div>
   );
 }
