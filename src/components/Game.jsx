@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import socket from "./socket"; // socket.js faylidan socketni import qilish
+import socket from "../socket"; // socket.js faylidan socketni import qilish
 
 const Game = ({ player }) => {
   const [players, setPlayers] = useState({});
