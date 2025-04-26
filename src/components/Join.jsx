@@ -1,4 +1,3 @@
-// Join.js
 import React, { useState } from "react";
 
 const Join = ({ onJoin }) => {
@@ -6,8 +5,12 @@ const Join = ({ onJoin }) => {
   const [room, setRoom] = useState("");
 
   const handleJoin = () => {
-    if (name && room) {
-      onJoin(name, room);
+    if (name.trim() && room.trim()) {
+      if (name.length > 20 || room.length > 20) {
+        alert("Name and room must be 20 characters or less.");
+        return;
+      }
+      onJoin(name.trim(), room.trim());
     } else {
       alert("Please enter a name and room.");
     }
@@ -25,6 +28,7 @@ const Join = ({ onJoin }) => {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Enter your name"
+            maxLength={20}
           />
         </div>
         <div className="mb-4">
@@ -35,6 +39,7 @@ const Join = ({ onJoin }) => {
             value={room}
             onChange={(e) => setRoom(e.target.value)}
             placeholder="Enter room name"
+            maxLength={20}
           />
         </div>
         <button onClick={handleJoin} className="btn btn-primary w-full">

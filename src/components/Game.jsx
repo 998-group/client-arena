@@ -1,34 +1,43 @@
 import React, { useEffect, useState } from "react";
-import socket from "../socket"; // socket.js faylidan socketni import qilish
+import socket from "../socket";
 
-const Game = ({ player }) => {
+const Game = ({ player, onLeave }) => {
   const [players, setPlayers] = useState({});
-  const [bulletDirection, setBulletDirection] = useState(null);
+  const [bullets, setBullets] = useState([]);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [gameOver, setGameOver] = useState(false);
   const [leaderboard, setLeaderboard] = useState([]);
-
-  // Personage ning pozitsiyasi va harakatini boshqarish
-  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [position, setPosition] = useState({ x: 400, y: 300 }); // Center of 800x600
   const [hp, setHp] = useState(100);
 
   useEffect(() => {
+    // Socket event listeners
     socket.on("player_positions", (positions) => {
       setPlayers(positions);
     });
 
+    socket.on("player_damaged", ({ id, hp }) => {
+      if (id === socket.id) setHp(hp);
+    });
+
     socket.on("player_dead", (id) => {
+      if (id === socket.id) {
+        setGameOver(true);
+      }
       setPlayers((prevPlayers) => {
         const newPlayers = { ...prevPlayers };
         delete newPlayers[id];
         return newPlayers;
       });
-      setGameOver(true);
     });
 
-    socket.on("leaderboard_update", (players) => {
+    socket.on("bullet_fired", ({ id, x, y, direction }) => {
+      setBullets((prev) => [...prev, { id, x, y, direction }]);
+    });
+
+    socket.on("leaderboard_update", (leaderboardData) => {
       setLeaderboard(
-        Object.entries(players).map(([id, { score, name }]) => ({
+        leaderboardData.map(({ id, name, score }) => ({
           id,
           name,
           score,
@@ -36,38 +45,57 @@ const Game = ({ player }) => {
       );
     });
 
+    socket.on("error", ({ message }) => {
+      alert(`Error: ${message}`);
+    });
+
+    socket.on("connect_error", () => {
+      alert("Failed to connect to server");
+    });
+
     return () => {
       socket.off("player_positions");
+      socket.off("player_damaged");
       socket.off("player_dead");
+      socket.off("bullet_fired");
       socket.off("leaderboard_update");
+      socket.off("error");
+      socket.off("connect_error");
     };
   }, []);
 
-  // W, A, S, D tugmalarini bosganda harakat qilish
+  // Handle player movement
   const handleKeyDown = (e) => {
     const step = 5;
     if (gameOver) return;
 
-    if (e.key === "w") setPosition((prev) => ({ ...prev, y: prev.y - step }));
-    if (e.key === "s") setPosition((prev) => ({ ...prev, y: prev.y + step }));
-    if (e.key === "a") setPosition((prev) => ({ ...prev, x: prev.x - step }));
-    if (e.key === "d") setPosition((prev) => ({ ...prev, x: prev.x + step }));
+    let newPosition = { ...position };
+    if (e.key === "w" && newPosition.y > 0) newPosition.y -= step;
+    if (e.key === "s" && newPosition.y < 600) newPosition.y += step;
+    if (e.key === "a" && newPosition.x > 0) newPosition.x -= step;
+    if (e.key === "d" && newPosition.x < 800) newPosition.x += step;
+
+    setPosition(newPosition);
+    socket.emit("move", { position: newPosition, room: player.room });
   };
 
-  // Mouse xohishlariga qarab o'q otish
+  // Handle mouse movement for aiming
   const handleMouseMove = (e) => {
     setMousePos({ x: e.clientX, y: e.clientY });
   };
 
-  // Space tugmasi bosilganda o'qni otish
+  // Handle shooting
   const handleSpaceKey = (e) => {
-    if (e.code === "Space" && player) {
-      const direction = { x: mousePos.x - position.x, y: mousePos.y - position.y };
-      setBulletDirection(direction);
+    if (e.code === "Space" && !gameOver) {
+      const direction = {
+        x: (mousePos.x - position.x) / 100, // Normalize
+        y: (mousePos.y - position.y) / 100,
+      };
       socket.emit("fire", { direction, room: player.room });
     }
   };
 
+  // Add event listeners
   useEffect(() => {
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("mousemove", handleMouseMove);
@@ -78,14 +106,44 @@ const Game = ({ player }) => {
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("keydown", handleSpaceKey);
     };
-  }, [mousePos, position, player]);
+  }, [mousePos, position, gameOver]);
 
-  // Leaderboardni ko'rsatish
+  // Update bullet positions
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setBullets((prev) =>
+        prev
+          .map((bullet) => ({
+            ...bullet,
+            x: bullet.x + bullet.direction.x * 10,
+            y: bullet.y + bullet.direction.y * 10,
+          }))
+          .filter(
+            (bullet) =>
+              bullet.x >= 0 &&
+              bullet.x <= 800 &&
+              bullet.y >= 0 &&
+              bullet.y <= 600
+          )
+      );
+    }, 16); // ~60 FPS
+    return () => clearInterval(interval);
+  }, []);
+
+  // Handle play again
+  const handlePlayAgain = () => {
+    setGameOver(false);
+    setPosition({ x: 400, y: 300 });
+    setHp(100);
+    socket.emit("join_room", { name: player.name, room: player.room });
+  };
+
+  // Render leaderboard
   const renderLeaderboard = () => {
     return leaderboard.map(({ id, name, score }) => (
       <div key={id} className="flex justify-between p-2 border-b">
-        <div>{name}</div>
-        <div>{score}</div>
+        <div>{name || "Unknown"}</div>
+        <div>{score ?? 0}</div>
       </div>
     ));
   };
@@ -96,42 +154,61 @@ const Game = ({ player }) => {
         <div className="card bg-red-800 p-6 rounded-xl shadow-xl text-center">
           <h2 className="text-3xl font-bold mb-4">Game Over</h2>
           <button
-            onClick={() => setGameOver(false)}
-            className="btn btn-success w-full"
+            onClick={handlePlayAgain}
+            className="btn btn-success w-full mb-2"
           >
             Play Again
+          </button>
+          <button onClick={onLeave} className="btn btn-warning w-full">
+            Leave Game
           </button>
         </div>
       ) : (
         <div className="flex flex-col items-center">
           <h1 className="text-3xl font-bold mb-4">{player.name}'s Game</h1>
 
-          {/* Players */}
-          <div className="space-y-4 mb-6">
-            {Object.entries(players).map(([id, { name, x, y, hp }]) => (
-              <div key={id} className="card bg-gray-700 p-4 rounded-xl shadow-xl w-80">
-                <div className="flex justify-between">
-                  <span className="font-semibold">{name}</span>
-                  <span>HP: {hp}</span>
-                </div>
-                <div>Position: ({x.toFixed(1)}, {y.toFixed(1)})</div>
+          {/* Game Area */}
+          <div className="relative w-[800px] h-[600px] bg-gray-200 border-2 border-gray-700">
+            {/* Players */}
+            {Object.entries(players).map(([id, { name, position, hp }]) => (
+              <div
+                key={id}
+                className="absolute w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white"
+                style={{ left: position.x - 16, top: position.y - 16 }}
+              >
+                {name[0]}
+                <div className="absolute -top-6 text-xs">HP: {hp}</div>
               </div>
+            ))}
+            {/* Bullets */}
+            {bullets.map((bullet, index) => (
+              <div
+                key={index}
+                className="absolute w-4 h-4 bg-red-500 rounded-full"
+                style={{ left: bullet.x - 8, top: bullet.y - 8 }}
+              />
             ))}
           </div>
 
-          {/* Game Actions */}
-          <div className="flex justify-center">
-            <button
-              onClick={() => socket.emit("disconnect")}
-              className="btn btn-warning mb-4"
-            >
-              Leave Room
-            </button>
+          {/* Player Info */}
+          <div className="mt-4">
+            <div>Your HP: {hp}</div>
+            <div>
+              Position: ({position.x.toFixed(1)}, {position.y.toFixed(1)})
+            </div>
           </div>
+
+          {/* Leave Button */}
+          <button
+            onClick={onLeave}
+            className="btn btn-warning mt-4"
+          >
+            Leave Game
+          </button>
         </div>
       )}
 
-      {/* Leaderboard fixed right */}
+      {/* Leaderboard */}
       <div className="fixed right-0 top-0 w-64 bg-gray-800 text-white p-4 rounded-l-xl shadow-xl h-full overflow-auto">
         <h2 className="text-xl font-semibold mb-4">Leaderboard</h2>
         <div className="space-y-2">{renderLeaderboard()}</div>

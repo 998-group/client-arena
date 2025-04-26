@@ -9,12 +9,16 @@ const App = () => {
     setPlayer({ name, room });
   };
 
+  const handleLeave = () => {
+    setPlayer(null);
+  };
+
   return (
     <div className="App">
       {!player ? (
         <Join onJoin={handleJoin} />
       ) : (
-        <Game player={player} />
+        <Game player={player} onLeave={handleLeave} />
       )}
     </div>
   );
