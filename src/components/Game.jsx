@@ -97,7 +97,8 @@ export default function Game({ player }) {
         >
           👾
           <div className="absolute -top-5 text-xs bg-red-500 px-1 rounded">
-            {data.hp || 100} HP
+            <p>{data.name}</p>
+            <p>{data.hp || 100} HP</p>
           </div>
         </div>
       ))}
