@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import socket from "../socket";
+import { IoExitOutline } from "react-icons/io5";
 
 const Game = ({ player, onLeave }) => {
   const [players, setPlayers] = useState({});
@@ -136,14 +137,14 @@ const Game = ({ player, onLeave }) => {
   const handlePlayAgain = () => {
     setGameOver(false);
     setPosition({ x: 400, y: 300 });
-    setHp(100);
+    setHp(2);
     socket.emit("join_room", { name: player.name, room: player.room });
   };
 
   // Render leaderboard
   const renderLeaderboard = () => {
     return leaderboard.map(({ id, name, score }) => (
-      <div key={id} className="flex justify-between p-2 border-b">
+      <div key={id} className="flex justify-between p-2 border-b text-xs">
         <div>{name || "Unknown"}</div>
         <div>{score ?? 0}</div>
       </div>
@@ -170,7 +171,7 @@ const Game = ({ player, onLeave }) => {
           <h1 className="text-3xl font-bold mb-4">{player.name}'s Game</h1>
 
           {/* Game Area */}
-          <div className="relative w-[800px] h-[600px] bg-gray-200 border-2 border-gray-700">
+          <div className="relative overflow-hidden rounded-xl p-5 w-6xl h-[600px] bg-gray-200 border-2 border-gray-700">
             {/* Players */}
             {Object.entries(players).map(([id, { name, position, hp }]) => (
               <div
@@ -179,7 +180,7 @@ const Game = ({ player, onLeave }) => {
                 style={{ left: position.x - 16, top: position.y - 16 }}
               >
                 {name[0]}
-                <div className="absolute -top-6 text-xs">HP: {hp}</div>
+                <div className="absolute -top-6 text-xs text-nowrap text-primary">HP: {hp}</div>
               </div>
             ))}
             {/* Bullets */}
@@ -193,9 +194,19 @@ const Game = ({ player, onLeave }) => {
           </div>
 
           {/* Player Info */}
-          <div className="mt-4">
-            <div>Your HP: {hp}</div>
-            <div>
+          <div className="mt-4 fixed -top-4 p-4 rounded-xl left-0 bg-base-300">
+            <div className="flex items-center justify-between">
+              <p className="px-1 text-sm capitalize font-bold text-info">{player.name}</p>
+              <div className="text-error py-2 cursor-pointer">
+                <IoExitOutline />
+              </div>
+            </div>
+            <div className="relative">
+              <progress className={`progress ${hp >= 70 ? 'progress-success' : hp >= 45 ? "progress-warning" : "progress-error"} w-56 h-5`} value={hp} max="100">
+              </progress>
+              <div className="absolute z-50 top-1/2 left-1/2 -translate-x-1/2 text-xs font-bold -translate-y-full mt-1">HP: {hp}</div>
+            </div>
+            <div className="text-xs font-bold">
               Position: ({position.x.toFixed(1)}, {position.y.toFixed(1)})
             </div>
           </div>
@@ -211,7 +222,7 @@ const Game = ({ player, onLeave }) => {
       )}
 
       {/* Leaderboard */}
-      <div className="fixed right-0 top-0 w-64 bg-gray-800 text-white p-4 rounded-l-xl shadow-xl h-full overflow-auto">
+      <div className="fixed right-0 top-0 w-40 bg-gray-800 text-white p-4 rounded-l-xl shadow-xl h-full overflow-auto">
         <h2 className="text-xl font-semibold mb-4">Leaderboard</h2>
         <div className="space-y-2">{renderLeaderboard()}</div>
       </div>
