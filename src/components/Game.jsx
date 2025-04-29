@@ -78,7 +78,9 @@ const Game = ({ player, onLeave }) => {
     setPosition(newPosition);
     socket.emit("move", { position: newPosition, room: player.room });
   };
-
+  useEffect(() => {
+    console.log("PLAYERS: ", players)
+  }, [players])
   // Handle mouse movement for aiming
   const handleMouseMove = (e) => {
     setMousePos({ x: e.clientX, y: e.clientY });
