@@ -138,7 +138,6 @@ const Game = ({ player, onLeave }) => {
     setGameOver(false);
     setPosition({ x: 400, y: 300 });
     setHp(2);
-    socket.emit("join_room", { name: player.name, room: player.room });
   };
 
   // Render leaderboard

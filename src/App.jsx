@@ -9,6 +9,7 @@ const App = () => {
   const handleJoin = (name, room) => {
     setPlayer({ name, room });
     socket.emit("join_room", { name, room });
+    // socket.emit("join_room", { name: player.name, room: player.room });
   };
 
 
