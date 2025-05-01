@@ -151,7 +151,7 @@ const Game = ({ player, onLeave }) => {
   };
 
   return (
-    <div className="bg-gray-900 text-white min-h-screen flex flex-col items-center p-4 relative">
+    <div className="bg-gray-900 text-white min-h-screen overflow-hidden flex flex-col items-center relative">
       {gameOver ? (
         <div className="card bg-red-800 p-6 rounded-xl shadow-xl text-center">
           <h2 className="text-3xl font-bold mb-4">Game Over</h2>
@@ -166,11 +166,29 @@ const Game = ({ player, onLeave }) => {
           </button>
         </div>
       ) : (
-        <div className="flex flex-col items-center">
-          <h1 className="text-3xl font-bold mb-4">{player.name}'s Game</h1>
+        <div className="flex flex-1 w-full items-center">
+          {/* <h1 className="text-3xl font-bold mb-4">{player.name}'s Game</h1> */}
+
+          {/* Player Info */}
+          <div className=" p-4 flex-1 left-0 bg-base-300 h-screen">
+            <div className="flex items-center justify-between">
+              <p className="px-1 text-sm capitalize font-bold text-info">{player.name}</p>
+              <div className="text-error py-2 cursor-pointer">
+                <IoExitOutline />
+              </div>
+            </div>
+            <div className="relative">
+              <progress className={`progress ${hp >= 70 ? 'progress-success' : hp >= 45 ? "progress-warning" : "progress-error"} w-56 h-5`} value={hp} max="100">
+              </progress>
+              <div className="absolute z-50 top-1/2 left-1/2 -translate-x-1/2 text-xs font-bold -translate-y-full mt-1">HP: {hp}</div>
+            </div>
+            <div className="text-xs font-bold">
+              Position: ({position.x.toFixed(1)}, {position.y.toFixed(1)})
+            </div>
+          </div>
 
           {/* Game Area */}
-          <div className="relative overflow-hidden rounded-xl p-5 w-6xl h-[600px] bg-gray-200 border-2 border-gray-700">
+          <div className="relative overflow-hidden rounded-xl p-5 w-6xl h-screen bg-gray-200 border-2 border-gray-700">
             {/* Players */}
             {Object.entries(players).map(([id, { name, position, hp }]) => (
               <div
@@ -192,39 +210,14 @@ const Game = ({ player, onLeave }) => {
             ))}
           </div>
 
-          {/* Player Info */}
-          <div className="mt-4 fixed -top-4 p-4 rounded-xl left-0 bg-base-300">
-            <div className="flex items-center justify-between">
-              <p className="px-1 text-sm capitalize font-bold text-info">{player.name}</p>
-              <div className="text-error py-2 cursor-pointer">
-                <IoExitOutline />
-              </div>
-            </div>
-            <div className="relative">
-              <progress className={`progress ${hp >= 70 ? 'progress-success' : hp >= 45 ? "progress-warning" : "progress-error"} w-56 h-5`} value={hp} max="100">
-              </progress>
-              <div className="absolute z-50 top-1/2 left-1/2 -translate-x-1/2 text-xs font-bold -translate-y-full mt-1">HP: {hp}</div>
-            </div>
-            <div className="text-xs font-bold">
-              Position: ({position.x.toFixed(1)}, {position.y.toFixed(1)})
-            </div>
+          <div className="min-w-44 flex-1 w-full bg-gray-800 text-white p-4 h-screen shadow-xl  overflow-auto">
+            <h2 className="text-xl font-semibold mb-4">Leaderboard</h2>
+            <div className="space-y-2">{renderLeaderboard()}</div>
           </div>
-
-          {/* Leave Button */}
-          <button
-            onClick={onLeave}
-            className="btn btn-warning mt-4"
-          >
-            Leave Game
-          </button>
         </div>
       )}
 
-      {/* Leaderboard */}
-      <div className="fixed right-0 top-0 w-40 bg-gray-800 text-white p-4 rounded-l-xl shadow-xl h-full overflow-auto">
-        <h2 className="text-xl font-semibold mb-4">Leaderboard</h2>
-        <div className="space-y-2">{renderLeaderboard()}</div>
-      </div>
+
     </div>
   );
 };
