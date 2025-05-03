@@ -193,11 +193,14 @@ const Game = ({ player, onLeave }) => {
             {Object.entries(players).map(([id, { name, position, hp }]) => (
               <div
                 key={id}
-                className="absolute w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white"
+                className="absolute w-8 h-8 bg-blue-500 text-xs rounded-full flex items-center justify-center text-white"
                 style={{ left: position.x - 16, top: position.y - 16 }}
               >
-                {name[0]}
-                <div className="absolute -top-6 text-xs text-nowrap text-primary">HP: {hp}</div>
+
+                <div className="absolute -top-8 text-xs text-nowrap text-primary">
+                  <p className="text-xs">HP: {hp}</p>
+                  <p className="text-primary">{name}</p>
+                </div>
               </div>
             ))}
             {/* Bullets */}
